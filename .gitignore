@@ -1,0 +1,4 @@
+private/
+deps/
+bin/
+nim.cfg
