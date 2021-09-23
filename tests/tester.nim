@@ -208,6 +208,7 @@ echo ""
 let asd = 5
 
 let f = cast[PNimType](getTypeInfo(myobj[]))
+
 echo f[].node[].name
 echo f[].flags
 let asdf = cast[PNimType](getTypeInfo(asd))

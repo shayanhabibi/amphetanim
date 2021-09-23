@@ -87,7 +87,7 @@ type
     kind*: TNimKind
     flags*: set[TNimTypeFlag]
     base*: ptr TNimType
-    node: ptr TNimNode # valid for tyRecord, tyObject, tyTuple, tyEnum
+    node*: ptr TNimNode # valid for tyRecord, tyObject, tyTuple, tyEnum
     finalizer*: pointer # the finalizer for the type
     marker*: proc (p: pointer, op: int) {.nimcall, tags: [], raises: [].} # marker proc for GC
     deepcopy*: proc (p: pointer): pointer {.nimcall, tags: [], raises: [].}
@@ -101,11 +101,11 @@ type
 type
   PNimType* = ptr TNimType
 
-proc getTypeInfo[T](x: T): pointer {.magic: "GetTypeInfo".}
+# proc getTypeInfo[T](x: T): pointer {.magic: "GetTypeInfo".}
 
-template getAmpheType(o: typed): TNimType =
-  getTypeInfo(o)[]
+template getAmpheType*(o: typed): TNimType =
+  cast[PNimType](getTypeInfo(o))[]
 
-proc isRef[T](x: T): bool =
+proc isRef*[T](x: T): bool =
   let ttipe = getAmpheType x  
   ttipe.kind == tyRef
