@@ -9,3 +9,9 @@ Will follow with fixing up assume iteration to work for loony by iterating over 
 Post asserting this fact, an atomic_thread_fence release will be set.
 
 Receiving the graph on the other end of the loony queue will require an atomic_thread_fence acquire after attaining the head of the graph. After this memory should be safe to read.
+
+## Update
+
+This is stupid.
+
+The only good thing I can grab out of the stupid lower primitives is a quick check on whether or not there are any refs contained inside (and therefore whether I care or not to delve further down the tree)
