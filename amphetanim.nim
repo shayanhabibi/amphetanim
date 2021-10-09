@@ -1,11 +1,13 @@
+import cps
 import amphetanim/spec
-export spec
+import amphetanim/tokens
+export spec, tokens
 
 type
   ControlBlock = object
     tag: uint16
     ppad: array[32-1, uint16]
-  Amphetanim*[T; S: static int; F: static[AmphFlags]] = ref object
+  Amphetanim*[T: ref; S: static int; F: static AmphFlags] = ref object
     slots: array[S.getLen, uint]
     ppad: array[S.getPadLen, uint]
     control: ControlBlock
@@ -22,8 +24,7 @@ func compositeLen(val: int): int =
     result = result.setPad(8 - ((val * 2) mod 8))
 
 proc newAmphetanim*[T](ssize: static int = 1,
-                      flags: static set[AmphFlag] = {Spsc}):
-                      Amphetanim[T, compositeLen ssize, toAmphFlags(flags)] =
+                      flags: static set[AmphFlag] = {Spsc}): auto =
   result = Amphetanim[T, compositeLen ssize, toAmphFlags(flags)]()
   initAmphetanim result
 
@@ -42,16 +43,12 @@ func paddingLen*[T, S, F](amph: Amphetanim[T, S, F]): int =
   S.getPadLen
 
 proc push*[T; F](tok: AmphToken[T, F], el: T): bool =
+  GC_ref el
   result = atomicCompareExchangeN(tok.getPushSlot(), addr zeroComp, cast[uint](el), false, ATOMIC_RELEASE, ATOMIC_RELAXED)
-  when T is ref:
-    if result:
-      GC_ref el
-
+  if not result:
+    GC_unref el
 proc pull*[T; F](tok: AmphToken[T, F]): T =
   let res = atomicExchangeN(tok.getPullSlot(), 0'u, ATOMIC_ACQUIRE)
-  if not res == 0'u:
-    result = cast[T](res)
-    when T is ref:
-      GC_unref result
-  else:
-    result = nil
+  result = cast[T](res)
+  if not result.isNil:
+    GC_unref result
