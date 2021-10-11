@@ -6,7 +6,7 @@ type
     val: int
   Banana = ref object
 
-var amph = newAmphetanim[Continuation]()
+var amph = newAmphetanim[Continuation](1, {Blocking})
 
 proc incVal(c: C): C {.cpsMagic.} =
   c.val.inc
@@ -23,6 +23,7 @@ echo el.running()
 let (slot1, slot2) = amph.getSlots()
 echo cast[pointer](el).repr
 echo slot1.push(el)
+# echo slot1.push(el) # this will block with the blocking flag
 var c = slot2.pull
 echo cast[pointer](c).repr
 echo c.running()

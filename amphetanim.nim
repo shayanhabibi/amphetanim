@@ -1,6 +1,6 @@
-import cps
 import amphetanim/spec
 import amphetanim/tokens
+import amphetanim/primitives/futex
 export spec, tokens
 
 type
@@ -12,7 +12,6 @@ type
     ppad: array[S.getPadLen, uint]
     control: ControlBlock
 
-var zeroComp {.global.}: uint = 0'u
 
 func initAmphetanim(amph: Amphetanim) =
   discard 
@@ -43,12 +42,30 @@ func paddingLen*[T, S, F](amph: Amphetanim[T, S, F]): int =
   S.getPadLen
 
 proc push*[T; F](tok: AmphToken[T, F], el: T): bool =
+  var zeroComp = 0'u
   GC_ref el
-  result = atomicCompareExchangeN(tok.getPushSlot(), addr zeroComp, cast[uint](el), false, ATOMIC_RELEASE, ATOMIC_RELAXED)
-  if not result:
-    GC_unref el
+  when Blocking in F:
+    while true:
+      result = atomicCompareExchangeN(tok.getPushSlot(), addr zeroComp, cast[uint](el), false, ATOMIC_ACQUIRE, ATOMIC_RELEASE)
+      if not result:
+        var curr = tok.getPushSlot()[]
+        if curr != 0'u:
+          wait(tok.getPushSlot(), curr)
+      else:
+        wake(tok.getPushSlot())
+        break
+  else:
+    result = atomicCompareExchangeN(tok.getPushSlot(), addr zeroComp, cast[uint](el), false, ATOMIC_ACQUIRE, ATOMIC_RELEASE)
+    if not result:
+      GC_unref el
+
 proc pull*[T; F](tok: AmphToken[T, F]): T =
-  let res = atomicExchangeN(tok.getPullSlot(), 0'u, ATOMIC_ACQUIRE)
+  var res = atomicExchangeN(tok.getPullSlot(), 0'u, ATOMIC_ACQUIRE)
+  when Blocking in F:
+    var zeroComp = 0'u
+    while res == 0'u:
+      wait(tok.getPullSlot(), zeroComp)
+      res = atomicExchangeN(tok.getPullSlot(), 0'u, ATOMIC_ACQUIRE)
   result = cast[T](res)
   if not result.isNil:
     GC_unref result

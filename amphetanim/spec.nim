@@ -1,5 +1,3 @@
-import std/bitops
-
 ## Simple one way passage for continuations with N sides.
 
 const
@@ -15,7 +13,7 @@ type
     ## whether multiple flags are set for the same group
     Spsc
 
-    UnqThrTkns
+    Blocking
   AmphFlags* = distinct uint
 
 func `or`*(x: AmphFlags, y: uint): AmphFlags {.borrow.}
