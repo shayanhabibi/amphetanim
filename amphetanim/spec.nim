@@ -6,6 +6,21 @@ const
   PAD_MASK*: int = (1 shl PAD_SHIFT) - 1    # Mask to acquire padding len
   SIZE_MASK*: int = high(int) xor PAD_MASK  # Mask to acquire length
 
+  FLAG_MASK*: int = (1 shl 4) - 1
+  SLOT_MASK*: int = high(int) xor FLAG_MASK
+
+  UNINIT*: int = 0
+  WAIT_PULL*: int = 1 # 0b0001
+  WAIT_PUSH*: int = 1 shl 1 # 0b0010
+
+  L16MASK*: uint32 = 1 shl 16 - 1
+  U16MASK*: uint32 = high(uint32) xor L16MASK
+
+template getL16*(val: uint32): uint16 =
+  cast[uint16](val)
+template getU16*(val: uint32): uint16 =
+  cast[uint16](val shr 16)
+
 type
   AmphFlag* {.size: sizeof(int).} = enum
     ## Flags that can be passed to Amphetanim.
@@ -14,6 +29,7 @@ type
     Spsc
 
     Blocking
+
   AmphFlags* = distinct uint
 
 func `or`*(x: AmphFlags, y: uint): AmphFlags {.borrow.}
@@ -55,3 +71,11 @@ template setLen*(comp: int, val: int): int =
 ## for amphetanim
 template setPad*(comp: int, val: int): int =
   (comp and SIZE_MASK) or (val and PAD_MASK)
+
+# Things to do with slots and their et als
+
+template getSlotFlags*(val: uint): uint =
+  val and FLAG_MASK
+
+template getSlotVal*(val: uint): uint =
+  val and SLOT_MASK
