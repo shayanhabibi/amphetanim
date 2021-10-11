@@ -66,6 +66,7 @@ proc pull*[T; F](tok: AmphToken[T, F]): T =
     while res == 0'u:
       wait(tok.getPullSlot(), zeroComp)
       res = atomicExchangeN(tok.getPullSlot(), 0'u, ATOMIC_ACQUIRE)
+    wake(tok.getPullSlot())
   result = cast[T](res)
   if not result.isNil:
     GC_unref result
