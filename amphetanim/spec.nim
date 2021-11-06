@@ -25,6 +25,9 @@ type
   AmphFlag* {.size: sizeof(int).} = enum
     afNonBlocking
     afBlocking
+
+    afPadding
+    afNoPadding
   AmphFlags* = distinct uint
     
 # fold borrows

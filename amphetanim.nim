@@ -9,33 +9,29 @@ export spec
 const cacheLineSize = 64
 
 type
-  # AmphSlot*[T; F: static SlotFlags] = ptr Slot[T, F]
-  AmphSlot*[T; F: static SlotFlags] = object
-    slotPtr: Atomic[uint]
+  LinePad[S: static int] = distinct array[S, char]
+    ## Basic object that will cover the remaining cache line
 
-  Amphetanim*[T; F: static AmphFlags] = ref object
-    node: Atomic[uint]
-    padding: array[cacheLineSize - 8, char]
+  AmphetanimObj*[T; F: static AmphFlags] = object
+    slot: Slot
 
-proc initAmphSlot[T](flags: static set[SlotFlag] = {}): auto =
-  #TODO error out if someone gives me some garbage as a type
-  result = AmphSlot[T, toSlotFlags(flags)](
-      slotPtr: allocAligned0(sizeof(Slot), SLOT_ALIGN)
-    )
+  Amphetanim*[T; F: static AmphFlags; S: static int] = ref object
+    obj*: AmphetanimObj[T, F]
+    padding*: LinePad[S]
 
-proc initAmphetanim*[T](flags: static set[AmphFlag] = {}): auto =
-  result = Amphetanim[T, toAmphFlags flags]()
+converter toAmphetanimObj*[T, F, S](amph: Amphetanim[T, F, S]): AmphetanimObj[T, F] =
+  amph.obj
 
-template getSlot(x: SomeInteger): untyped {.dirty.} =
-  cast[ptr Slot[T, F]](x and PTR_MASK)[]
-
-proc push[T; F](amph: AmphSlot[T, F], element: T): bool =
-  when compileOption"threads":
-    let val = amph.slotPtr.alignedFetchAdd(1'u, moAcquire)
-    if val.getIdx == 0:
-      val.getSlot.slot.store(unsafeAddr(element))
+proc newAmphetanim*[T](flags: static set[AmphFlag] = {afNoPadding}): auto =
+  template f: untyped = toAmphFlags flags
+  template s: untyped =
+    when afPadding in flags and afNoPadding notin flags:
+      cacheLineSize - sizeof(AmphetanimObj[T, f]) mod cacheLineSize
     else:
-      discard
-    
-proc pull[T; F](amph: AmphSlot[T, F]): T =
+      0
+  result = Amphetanim[T, f, s](
+    obj: AmphetanimObj[T, f]()
+  )
+
+proc push*[T; F](amph: AmphetanimObj[T, F], el: T): bool =
   discard
