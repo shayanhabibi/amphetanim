@@ -11,7 +11,7 @@ proc getCacheLineSize*(): int =
   let pbuff = cast[PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX](unsafeAddr buff)
 
   var bres = GetLogicalProcessorInformationEx(relationship, pbuff, plen)
-  doAssert bres == 1
+  assert bres == 1
 
   for gr in buff:
     if gr.union1.Cache.Level == 1:

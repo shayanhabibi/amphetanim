@@ -1,5 +1,6 @@
 import amphetanim/primitives/atomics
 import amphetanim/slot/spec
+export isResumed, isRead, isConsumed, isWritten, readPtr, readFlags
 
 type
   Slot* = object
@@ -54,3 +55,68 @@ proc overWrite*(slot: var Slot, val: uint, order: MemoryOrder = moSeqCon) {.inli
     slot.val.store(val or writer, order)
   else:
     slot.rval = val or writer
+
+proc swap*(slot: var Slot, expected: uint, val: uint,
+          success, failure: MemoryOrder): bool {.inline.} =
+  ## Swaps the value in the slot or returns false
+  when compileOption"threads":
+    slot.val.compareExchange(cast[var uint](unsafeAddr(expected)), val, success, failure)
+  else:
+    case slot.rval
+    of expected: slot.rval = val; true
+    else: false
+
+proc swap*(slot: var Slot, expected: uint, val: uint,
+          order: MemoryOrder = moSeqCon): bool {.inline.} =
+  ## Swaps the value in the slot or returns false
+  slot.swap(expected, val, order, order)
+
+proc weakSwap*(slot: var Slot, expected: uint, val: uint,
+              success, failure: MemoryOrder): bool {.inline.} =
+  when compileOption"threads":
+    slot.val.compareExchangeWeak(cast[var uint](unsafeAddr(expected)), val, success, failure)
+  else:
+    case slot.rval
+    of expected: slot.rval = val; true
+    else: false
+
+proc weakSwap*(slot: var Slot, expected: uint, val: uint,
+              order: MemoryOrder = moSeqCon): bool {.inline.} =
+  slot.swap(expected, val, order, order)
+
+proc clear*(slot: var Slot, val: uint, order: MemoryOrder = moSeqCon) {.inline.} =
+  ## Clears the slot
+  when compileOption"threads":
+    slot.val.store(0'u, order)
+  else:
+    slot.rval = 0'u
+
+proc clearFlags*(slot: var Slot, order: MemoryOrder = moSeqCon): uint {.inline.} =
+  ## Clears the flags of the slot (the first 3 bits)
+  when compileOption"threads":
+    slot.val.fetchAnd(ptrMask, order)
+  else:
+    result = slot.rval
+    slot.rval = slot.rval and ptrMask
+
+proc reclaim*(slot: var Slot, clear: static bool = false): bool {.inline.} =
+  ## Use this in cases where the slot should reasonably have already been
+  ## consumed according to sequential atomic actions. If it hasn't, then
+  ## a resume flag is set giving the lagging thread more time to catch up.
+  ## 
+  ## If the clear flag is set, then the slot will be cleared on success
+  if not slot.rawRead(moAcq).isConsumed:
+    var prev = slot.rawWrite(resume, moRlx) # extra steps to lag the process further
+    if not prev.isConsumed:
+      result = false
+  else:
+    when clear:
+      slot.clear()
+    result = true
+
+proc store*(slot: var Slot, val: uint, order: MemoryOrder = moSeqCon) {.inline,
+                                                  deprecated: "Use overWrite".} =
+  overWrite(slot, val, order)
+proc load*(slot: var Slot, order: MemoryOrder = moSeqCon): uint {.inline,
+                                                  deprecated: "use rawRead".} =
+  rawRead(slot, order)

@@ -8,7 +8,7 @@ block read:
 
 block write:
   var slot = Slot()
-  doassert slot.write(10) == 0
-  doassert slot.rawRead() == 12
+  doassert slot.write(16) == 0
+  doassert slot.rawRead() == 18
   # doassert slot.rawWrite(10) == 0
   # doassert slot.rawWrite(0) == (20 or writer)

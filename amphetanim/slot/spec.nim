@@ -5,6 +5,10 @@ const
   reader* = uint(1 shl 2) # 0b0100
   consumed* = writer or reader # 0b0110
 
+  flagMask* = consumed or resume
+  ptrMask* = high(uint) xor flagMask
+
+## Convenience templates to use against values retrieved from the slot
 template isWritten*(val: uint): bool =
   ## Checks if value has writer flag
   (val and writer) == writer
@@ -21,3 +25,9 @@ template isResumed*(val: uint): bool =
   ## Check if the value has a resume flag (usually indicates simultaneous
   ## actions on the slot/value)
   (val and resume) == resume
+
+template readPtr*(val: uint): uint =
+  val and ptrMask
+
+template readFlags*(val: uint): uint =
+  val and flagMask
