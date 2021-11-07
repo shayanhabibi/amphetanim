@@ -2,6 +2,7 @@
 
 import amphetanim/primitives/atomics
 
+
 const
   SLOT_ALIGN*:  int = 16 # Must be 8/16/32/64
   IDX_MASK*:    uint = 1 shl SLOT_ALIGN - 1
@@ -22,14 +23,26 @@ type
     sfBlocking
   SlotFlags* = distinct uint
 
+    
+
   AmphFlag* {.size: sizeof(int).} = enum
     afNonBlocking
     afBlocking
 
     afPadding
     afNoPadding
+
+    afSC
+    afMC
+    afSP
+    afMP
+
   AmphFlags* = distinct uint
     
+  AmphetanimKind* {.size: sizeof(int).} = enum
+    akCubby
+
+  AmphetanimKinds* = distinct uint
 # fold borrows
 when true:
   func `or`*(x: SlotFlags, y: uint): SlotFlags {.borrow.}
@@ -40,6 +53,10 @@ when true:
   func `and`*(x: AmphFlags, y: uint): AmphFlags {.borrow.}
   func `xor`*(x: AmphFlags, y: uint): AmphFlags {.borrow.}
   func `==`*(x: AmphFlags, y: uint): bool {.borrow.}
+  func `or`*(x: AmphetanimKinds, y: uint): AmphetanimKinds {.borrow.}
+  func `and`*(x: AmphetanimKinds, y: uint): AmphetanimKinds {.borrow.}
+  func `xor`*(x: AmphetanimKinds, y: uint): AmphetanimKinds {.borrow.}
+  func `==`*(x: AmphetanimKinds, y: uint): bool {.borrow.}
 
 # fold converters
 when true:
@@ -69,6 +86,19 @@ when true:
           result.incl flag
     else:
       result = cast[set[AmphFlag]](value)
+  converter toAmphetanimKinds*(flags: set[AmphetanimKind]): AmphetanimKinds =
+    when nimvm:
+      for flag in items(flags):
+        result = result or (1'u shl flag.ord)
+    else:
+      result = cast[AmphetanimKinds](flags)  
+  converter toSetAmphetanimKind*(value: AmphetanimKinds): set[AmphetanimKind] =
+    when nimvm:
+      for flag in items(AmphetanimKind):
+        if `and`(value, 1'u shl flag.ord) != 0:
+          result.incl flag
+    else:
+      result = cast[set[AmphetanimKind]](value)
 
 template aligned(): untyped {.dirty.} =
   cast[Atomic[alignType()]](location)

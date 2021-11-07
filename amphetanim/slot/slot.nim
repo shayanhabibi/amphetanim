@@ -9,6 +9,16 @@ type
     else:
       rval: uint
 
+proc rawLoad*(slot: var Slot): uint {.inline.} =
+  ## directly returns the value of the slot without performing atomic operations.
+  ## This should only be performed if an atomic operation has already been
+  ## performed elsewhere on the cache line (in which case the whole line would
+  ## be correct at that operations time)
+  when compileOption"threads":
+    slot.val.rawLoad()
+  else:
+    slot.rval
+
 proc rawRead*(slot: var Slot, order: MemoryOrder = moRlx): uint {.inline.} =
   ## Performs a raw read of the slot without writing a reader flag (like a peek)
   when compileOption"threads":

@@ -2,6 +2,6 @@ import amphetanim
 
 type SomeRef = ref object
 
-var amph = newAmphetanim[SomeRef](flags = {afNoPadding})
+var amph = newAmphetanim[SomeRef](akCubby, flags = {afPadding})
 
-echo sizeof(amph[])
+echo sizeof amph[]
