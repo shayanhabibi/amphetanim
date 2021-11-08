@@ -4,15 +4,16 @@ import amphetanim/primitives/atomics
 
 
 const
-  SLOT_ALIGN*:  int = 16 # Must be 8/16/32/64
-  IDX_MASK*:    uint = 1 shl SLOT_ALIGN - 1
+  slotAlignment*:  int = 16 # Must be 8/16/32/64
+  SLOT_ALIGN*: int = 1 shl slotAlignment
+  IDX_MASK*:    uint = 1 shl slotAlignment - 1
   PTR_MASK*:    uint = high(uint) xor IDX_MASK
 
 template alignType(): untyped =
-  when SLOT_ALIGN == 8: int8
-  elif SLOT_ALIGN == 16: int16
-  elif SLOT_ALIGN == 32: int32
-  elif SLOT_ALIGN == 64: int64 #TODO raise exception (impossibru)
+  when slotAlignment == 8: int8
+  elif slotAlignment == 16: int16
+  elif slotAlignment == 32: int32
+  elif slotAlignment == 64: int64 #TODO raise exception (impossibru)
 
 template getIdx*(x: SomeInteger): untyped =
   cast[alignType()](x and IDX_MASK)
