@@ -94,7 +94,7 @@ proc weakSwap*(slot: var Slot, expected: uint, val: uint,
               order: MemoryOrder = moSeqCon): bool {.inline.} =
   slot.swap(expected, val, order, order)
 
-proc clear*(slot: var Slot, val: uint, order: MemoryOrder = moSeqCon) {.inline.} =
+proc clear*(slot: var Slot, order: MemoryOrder = moSeqCon) {.inline.} =
   ## Clears the slot
   when compileOption"threads":
     slot.val.store(0'u, order)

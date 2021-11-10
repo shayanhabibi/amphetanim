@@ -22,9 +22,9 @@ type
 
   Amphetanim*[T; F: static AmphFlags; K: static AmphetanimKind; S: static int] = ref object
     obj*: AmphetanimObj[T, F, K]
-    padding*: LinePad[S]
+    padding: LinePad[S]
 
-converter toAmphetanimObj*[T, F, K, S](amph: Amphetanim[T, F, K, S]): var AmphetanimObj[T, F, K] =
+converter toAmphetanimObj*[T; F; K; S](amph: Amphetanim[T, F, K, S]): var AmphetanimObj[T, F, K] =
   amph.obj
 
 proc initAmphetanim*[T; F; K; S](amph: Amphetanim[T, F, K, S]) =
@@ -53,41 +53,62 @@ proc push*[T; F, K](amph: var AmphetanimObj[T, F, K], el: T): bool =
   template killT: untyped =
     when T is ref: GC_unref el
     else: discard
-
-  template pel: untyped = (cast[uint](el) or writer)
+  template pel(e: T): untyped = (cast[uint](e) or writer)
 
   when akCubby == K:
     let tagptr = amph.cubby.fetchAdd(1)
-    echo tagptr
     let tag = tagptr.getTag(slotAlignment)
-
+    let sptr = getPtr(tagptr, Slot, slotAlignment)
     template trueTagVal: int = tag.medianDev(slotAlignment)
 
     if trueTagVal >= 1:
-      echo trueTagVal
-      echo "wait push"
+      when afBlocking in F:
+        amph.cubby.addr().wait(trueTagVal())
+      else:
+        result = false
     else:
-      echo trueTagVal
-      echo "go push"
-
-  
-  if not result: killT()
+      result = true
+      saveT()
+      let prev = sptr[].write cast[uint](el)
+      if not likely(prev.readFlags == 0'u):
+        echo "PUSH FAILED; FLAG WRITTEN: ", prev.readFlags()
+        # flag was already written
+      when afBlocking in F:
+        if trueTagVal < 0:
+          wake(amph.cubby.addr())
+        
 
 proc pop*[T; F; K](amph: var AmphetanimObj[T, F, K]): T =
   # template killT(): untyped =
-    
+
   when akCubby == K:
     let tagptr = amph.cubby.fetchSub(1)
     let tag = tagptr.getTag(slotAlignment)
 
     template trueTagVal: int = tag.medianDev(slotAlignment)
 
-    if trueTagVal < 1:
-      echo trueTagVal
-      echo "wait pop"
+    template popImpl(body: untyped): untyped =
+      let val = tagptr.getPtr(Slot, slotAlignment)[].read()
+      if not likely(val.isWritten()):
+        body
+        echo val
+      let res = val.readPtr()
+      result = cast[T](res)
+      tagptr.getPtr(Slot, slotAlignment)[].clear()
+      when afBlocking in F:
+        if trueTagVal() < 0:
+          wake(amph.cubby.addr())
+
+
+    if trueTagVal() <= 0:
+      when afBlocking in F:
+        amph.cubby.addr().wait(trueTagVal())
+        while true:
+          popImpl: continue
+      else:
+        echo "wait pop"
     else:
-      echo trueTagVal
-      echo "go pop"
+      popImpl: echo "failed"
 
   when T is ref:
     if not result.isNil: GC_unref result

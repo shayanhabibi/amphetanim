@@ -33,6 +33,8 @@ type
     afPadding
     afNoPadding
 
+    afMemoryFence
+
     afSC
     afMC
     afSP
